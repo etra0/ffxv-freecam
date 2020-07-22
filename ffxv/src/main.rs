@@ -24,31 +24,7 @@ pub fn main() -> Result<(), Error> {
     let mut latest_x = 0;
     let mut latest_y = 0;
 
-    println!(
-        "
-    INSTRUCTIONS:
-
-    PAUSE/L2 + X - Activate/Deactivate Free Camera
-    END/L2 + Square - Pause the cinematic
-    DEL - Deattach Mouse
-
-    W, A, S, D/Left Stick - Move the camera
-    Mouse/Right Stick - Point the camera
-    CTRL, SPACE/TRIANGLE, X - Move UP or DOWN
-
-    PG UP, PG DOWN/DPAD UP, DPAD DOWN - Increase/Decrease speed multiplier
-    DPAD LEFT, DPAD RIGHT - Increase/Decrease Right Stick Sensitivity
-    F1, F2/L2, R2 - Increase/Decrease FOV respectively
-
-    WARNING: Once you deattach the camera (PAUSE), your mouse will be set in a fixed
-    position, so in order to attach/deattach the mouse to the camera, you can
-    press DEL
-
-    WARNING: If you're in freeroam and you stop hearing audio, it's probably
-    because you have the paused option activated, simply press END to deactivate it.
-
-    "
-    );
+    println!();
 
     println!("Waiting for the game to start");
     let process = loop {
@@ -78,6 +54,7 @@ pub fn main() -> Result<(), Error> {
 
     let mut restart_mouse = false;
 
+    // nop other camera writers
     cam.injections.push(Injection {
         entry_point: 0x10FCADE,
         f_orig: vec![0xFF, 0x90, 0x50, 0x12, 0x00, 0x00],
@@ -123,7 +100,7 @@ pub fn main() -> Result<(), Error> {
         // let speed_x = ((mouse_pos.x - latest_x) as f32) / duration/1.;
         // let speed_y = ((mouse_pos.y - latest_y) as f32) / duration/1.;
 
-        if active && capture_mouse {
+        if active  {
             macro_rules! dead_zone {
                 ($var:expr) => {{
                     let t = f32::from($var);
@@ -147,10 +124,16 @@ pub fn main() -> Result<(), Error> {
         latest_x = mouse_pos.x;
         latest_y = mouse_pos.y;
 
+        // debug purposes
+        let focus = process.read_value::<[f32; 3]>(p_shellcode + 0x200, true);
+        let position = process.read_value::<[f32; 3]>(p_shellcode + 0x200, true);
+
+        println!("{:?}\t{:?}", focus, position);
+
         // to scroll infinitely
         restart_mouse = !restart_mouse;
         unsafe {
-            if (GetAsyncKeyState(winuser::VK_PAUSE) as u32 & 0x8000) != 0
+            if (controller_state.Gamepad.wButtons & 0x280) == 0x280
             {
                 active = !active;
                 capture_mouse = active;
